@@ -1,114 +1,99 @@
 const fs = require('fs');
-
-if (!fs.existsSync('./temp')) {
-    fs.mkdirSync('./temp');
-}
-
-const { makeid } = require('./gen-id');
 const express = require('express');
-let router = express.Router();
-const pino = require("pino");
+const router = express.Router();
+const pino = require('pino');
+const { makeid } = require('./gen-id');
+
 const {
-    default: makeWASocket,
-    useMultiFileAuthState,
-    delay,
-    Browsers,
-    makeCacheableSignalKeyStore
+  default: makeWASocket,
+  useMultiFileAuthState,
+  delay,
+  makeCacheableSignalKeyStore
 } = require('@whiskeysockets/baileys');
 
-const { upload } = require('./mega');
+const cooldown = new Map();
 
-function removeFile(FilePath) {
-    if (!fs.existsSync(FilePath)) return false;
-    fs.rmSync(FilePath, { recursive: true, force: true });
+if (!fs.existsSync('./temp')) {
+  fs.mkdirSync('./temp');
+}
+
+function removeFile(path) {
+  if (fs.existsSync(path)) {
+    fs.rmSync(path, { recursive: true, force: true });
+  }
 }
 
 router.get('/', async (req, res) => {
-    const id = makeid();
+  let num = req.query.number;
 
-    // ✅ FIX: accept number from query OR body
-    let num = req.query.number || req.body.number;
+  if (!num) {
+    return res.send({ error: 'Phone number is required' });
+  }
 
-    // ✅ SAFETY CHECK
-    if (!num) {
-        return res.send({ error: "Phone number is required" });
+  // Clean & validate number
+  num = num.replace(/\D/g, '');
+  if (num.length < 10 || num.length > 15) {
+    return res.send({ error: 'Invalid phone number format' });
+  }
+
+  // Cooldown (30 minutes)
+  if (cooldown.has(num)) {
+    return res.send({
+      error: 'Please wait 30–60 minutes before requesting another pairing code'
+    });
+  }
+
+  cooldown.set(num, true);
+  setTimeout(() => cooldown.delete(num), 30 * 60 * 1000);
+
+  const id = makeid();
+  const authPath = `./temp/${id}`;
+
+  try {
+    const { state, saveCreds } = await useMultiFileAuthState(authPath);
+
+    const sock = makeWASocket({
+      auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(
+          state.keys,
+          pino({ level: 'fatal' })
+        )
+      },
+      logger: pino({ level: 'fatal' }),
+      printQRInTerminal: false,
+      browser: ['Chrome', 'Windows', '10']
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+
+    // Give WhatsApp time
+    await delay(5000);
+
+    if (!sock.authState.creds.registered) {
+      const response = await sock.requestPairingCode(num);
+
+      // WhatsApp did NOT approve
+      if (!response || !response.pairingCode) {
+        await removeFile(authPath);
+        return res.send({
+          error: 'WhatsApp did not approve pairing. Please wait and try again.'
+        });
+      }
+
+      // WhatsApp approved — send real code
+      return res.send({
+        code: response.pairingCode
+      });
     }
 
-    async function MAJIN_BUU_PAIR_CODE() {
-        const { state, saveCreds } = await useMultiFileAuthState('./temp/' + id);
-
-        try {
-            let sock = makeWASocket({
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(
-                        state.keys,
-                        pino({ level: "fatal" })
-                    )
-                },
-                printQRInTerminal: false,
-                logger: pino({ level: "fatal" }),
-                browser: Browsers.macOS("Safari")
-            });
-
-            if (!sock.authState.creds.registered) {
-                await delay(1500);
-
-                num = num.replace(/[^0-9]/g, '');
-                const code = await sock.requestPairingCode(num);
-
-                if (!res.headersSent) {
-                    await res.send({ code });
-                }
-            }
-
-            sock.ev.on('creds.update', saveCreds);
-
-            sock.ev.on("connection.update", async (s) => {
-                const { connection, lastDisconnect } = s;
-
-                if (connection === "open") {
-                    await delay(5000);
-
-                    let rf = `./temp/${id}/creds.json`;
-                    const mega_url = await upload(
-                        fs.createReadStream(rf),
-                        `${sock.user.id}.json`
-                    );
-
-                    const string_session = mega_url.replace(
-                        'https://mega.nz/file/',
-                        ''
-                    );
-
-                    await sock.sendMessage(sock.user.id, {
-                        text: "dante~" + string_session
-                    });
-
-                    await delay(50);
-                    await sock.ws.close();
-                    await removeFile('./temp/' + id);
-                    process.exit();
-                }
-
-                if (
-                    connection === "close" &&
-                    lastDisconnect?.error?.output?.statusCode !== 401
-                ) {
-                    await delay(100);
-                    MAJIN_BUU_PAIR_CODE();
-                }
-            });
-
-        } catch (err) {
-            await removeFile('./temp/' + id);
-            if (!res.headersSent) {
-                res.send({ error: "Service unavailable" });
-            }
-        }
-    }
-
-    return MAJIN_BUU_PAIR_CODE();
+  } catch (err) {
+    console.error(err);
+    await removeFile(authPath);
+    return res.send({
+      error: 'Service temporarily unavailable. Try again later.'
+    });
+  }
 });
 
 module.exports = router;
