@@ -11,88 +11,65 @@ const {
   makeCacheableSignalKeyStore
 } = require('@whiskeysockets/baileys');
 
-const cooldown = new Map();
+if (!fs.existsSync('./temp')) fs.mkdirSync('./temp');
 
-if (!fs.existsSync('./temp')) {
-  fs.mkdirSync('./temp');
-}
-
-function removeFile(path) {
-  if (fs.existsSync(path)) {
-    fs.rmSync(path, { recursive: true, force: true });
+function removeFile(dir) {
+  if (fs.existsSync(dir)) {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 }
 
 router.get('/', async (req, res) => {
-  let num = req.query.number;
+  let number = req.query.number;
 
-  if (!num) {
-    return res.send({ error: 'Phone number is required' });
+  if (!number) {
+    return res.status(400).json({ error: 'Phone number required' });
   }
 
-  // Clean & validate number
-  num = num.replace(/\D/g, '');
-  if (num.length < 10 || num.length > 15) {
-    return res.send({ error: 'Invalid phone number format' });
+  number = number.replace(/\D/g, '');
+  if (number.length < 10 || number.length > 15) {
+    return res.status(400).json({ error: 'Invalid phone number' });
   }
-
-  // Cooldown (30 minutes)
-  if (cooldown.has(num)) {
-    return res.send({
-      error: 'Please wait 30–60 minutes before requesting another pairing code'
-    });
-  }
-
-  cooldown.set(num, true);
-  setTimeout(() => cooldown.delete(num), 30 * 60 * 1000);
 
   const id = makeid();
-  const authPath = `./temp/${id}`;
+  const authDir = `./temp/${id}`;
 
   try {
-    const { state, saveCreds } = await useMultiFileAuthState(authPath);
+    const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
     const sock = makeWASocket({
       auth: {
         creds: state.creds,
-        keys: makeCacheableSignalKeyStore(
-          state.keys,
-          pino({ level: 'fatal' })
-        )
+        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }))
       },
       logger: pino({ level: 'fatal' }),
-      printQRInTerminal: false,
-      browser: ['Chrome', 'Windows', '10']
+      browser: ['Chrome', 'Windows', '10'],
+      printQRInTerminal: false
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // Give WhatsApp time
-    await delay(5000);
+    await delay(4000);
 
     if (!sock.authState.creds.registered) {
-      const response = await sock.requestPairingCode(num);
+      const result = await sock.requestPairingCode(number);
 
-      // WhatsApp did NOT approve
-      if (!response || !response.pairingCode) {
-        await removeFile(authPath);
-        return res.send({
-          error: 'WhatsApp did not approve pairing. Please wait and try again.'
+      if (!result || !result.pairingCode) {
+        removeFile(authDir);
+        return res.status(500).json({
+          error: 'WhatsApp did not approve pairing. Try again later.'
         });
       }
 
-      // WhatsApp approved — send real code
-      return res.send({
-        code: response.pairingCode
+      return res.json({
+        code: result.pairingCode
       });
     }
 
   } catch (err) {
     console.error(err);
-    await removeFile(authPath);
-    return res.send({
-      error: 'Service temporarily unavailable. Try again later.'
-    });
+    removeFile(authDir);
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
