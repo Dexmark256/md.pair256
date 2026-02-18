@@ -1,178 +1,127 @@
 const { makeid } = require('./gen-id');
 const express = require('express');
 const fs = require('fs');
-let router = express.Router();
+const path = require('path');
 const pino = require("pino");
-const { default: makeWASocket, useMultiFileAuthState, delay, Browsers, makeCacheableSignalKeyStore, getAggregateVotesInPollMessage, DisconnectReason, WA_DEFAULT_EPHEMERAL, jidNormalizedUser, proto, getDevice, generateWAMessageFromContent, fetchLatestBaileysVersion, makeInMemoryStore, getContentType, generateForwardMessageContent, downloadContentFromMessage, jidDecode } = require('@whiskeysockets/baileys')
+const {
+    default: makeWASocket,
+    useMultiFileAuthState,
+    delay,
+    Browsers,
+    makeCacheableSignalKeyStore
+} = require('@whiskeysockets/baileys');
 
-const { upload } = require('./mega');
-function removeFile(FilePath) {
-    if (!fs.existsSync(FilePath)) return false;
-    fs.rmSync(FilePath, { recursive: true, force: true });
+const router = express.Router();
+
+function removeFolder(folderPath) {
+    if (fs.existsSync(folderPath)) {
+        fs.rmSync(folderPath, { recursive: true, force: true });
+    }
 }
+
 router.get('/', async (req, res) => {
     const id = makeid();
-    let num = req.query.number;
-    async function MAJIN_BUU_PAIR_CODE() {
-        const {
-            state,
-            saveCreds
-        } = await useMultiFileAuthState('./temp/' + id);
-        try {
-var items = ["Safari"];
-function selectRandomItem(array) {
-  var randomIndex = Math.floor(Math.random() * array.length);
-  return array[randomIndex];
-}
-var randomItem = selectRandomItem(items);
-            
-            let sock = makeWASocket({
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
-                },
-                printQRInTerminal: false,
-                generateHighQualityLinkPreview: true,
-                logger: pino({ level: "fatal" }).child({ level: "fatal" }),
-                syncFullHistory: false,
-                browser: Browsers.macOS(randomItem)
-            });
-            if (!sock.authState.creds.registered) {
-                await delay(1500);
-                num = num.replace(/[^0-9]/g, '');
-                const code = await sock.requestPairingCode(num);
-                if (!res.headersSent) {
-                    await res.send({ code });
-                }
-            }
-            sock.ev.on('creds.update', saveCreds);
-            sock.ev.on("connection.update", async (s) => {
+    const tempDir = path.join(__dirname, 'temp', id);
+    const phoneNumber = (req.query.number || '').replace(/\D/g, '');
 
-    const {
-                    connection,
-                    lastDisconnect
-                } = s;
-                
-                if (connection == "open") {
-                    await delay(5000);
-                    let data = fs.readFileSync(__dirname + `/temp/${id}/creds.json`);
-                    let rf = __dirname + `/temp/${id}/creds.json`;
-                    function generateRandomText() {
-                        const prefix = "3EB";
-                        const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-                        let randomText = prefix;
-                        for (let i = prefix.length; i < 22; i++) {
-                            const randomIndex = Math.floor(Math.random() * characters.length);
-                            randomText += characters.charAt(randomIndex);
+    if (!phoneNumber) {
+        return res.status(400).send({ error: "Please provide a valid phone number" });
+    }
+
+    async function createSocketSession() {
+        const { state, saveCreds } = await useMultiFileAuthState(tempDir);
+        const logger = pino({ level: "fatal" }).child({ level: "fatal" });
+
+        const sock = makeWASocket({
+            auth: {
+                creds: state.creds,
+                keys: makeCacheableSignalKeyStore(state.keys, logger)
+            },
+            printQRInTerminal: false,
+            generateHighQualityLinkPreview: true,
+            logger,
+            syncFullHistory: false,
+            browser: Browsers.macOS("Safari")
+        });
+
+        sock.ev.on('creds.update', saveCreds);
+
+        sock.ev.on("connection.update", async (update) => {
+            const { connection, lastDisconnect } = update;
+
+            if (connection === "open") {
+                await delay(5000);
+
+                try {
+                    const credsPath = path.join(tempDir, 'creds.json');
+                    const sessionData = fs.readFileSync(credsPath, 'utf8');
+                    const base64 = Buffer.from(sessionData).toString('base64');
+                    const sessionId = "ARSLAN-MD~" + base64;
+
+                    await sock.sendMessage(sock.user.id, { text: sessionId });
+
+                    const successMsg = {
+                        text:
+                            `🚀 *ARSLAN-MD Session Created!*\n\n` +
+                            `▸ *Never share* your session ID\n` +
+                            `▸ Join our WhatsApp Channel\n` +
+                            `▸ Report bugs on GitHub\n\n` +
+                            `_Powered by ARSLAN-MD\n\n` +
+                            `🔗 *Useful Links:*\n` +
+                            `▸ GitHub: https://github.com/Arslan-MD/Arslan_MD\n` +
+                            `▸ https://whatsapp.com/channel/0029VarfjW04tRrmwfb8x306`,
+                        contextInfo: {
+                            mentionedJid: [sock.user.id],
+                            forwardingScore: 1000,
+                            isForwarded: true,
+                            forwardedNewsletterMessageInfo: {
+                                newsletterJid: "120363348739987203@newsletter",
+                                newsletterName: "ARSLAN-MD",
+                                serverMessageId: 143
+                            }
                         }
-                        return randomText;
-                    }
-                    const randomText = generateRandomText();
-                    try {
+                    };
 
+                    await sock.sendMessage(sock.user.id, successMsg);
 
-                        
-                        const { upload } = require('./mega');
-                        const mega_url = await upload(fs.createReadStream(rf), `${sock.user.id}.json`);
-                        const string_session = mega_url.replace('https://mega.nz/file/', '');
-                        let md = "malvin~" + string_session;
-                        let code = await sock.sendMessage(sock.user.id, { text: md });
-                        let desc = `*Hey there, MAJIN-BUU User!* 👋🏻
-
-Thanks for using *MAJIN-BUU* — your session has been successfully created!
-
-🔐 *Session ID:* Sent above  
-⚠️ *Keep it safe!* Do NOT share this ID with anyone.
-
-——————
-
-*✅ Stay Updated:*  
-Join our official WhatsApp Channel:  
-https://whatsapp.com/channel/0029VbC24qF84OmF4G1kCy3N
-
-*💻 Source Code:*  
-Fork & explore the project on GitHub:  
-https://github.com/Dexmark256/Majin-Buu-bot
-
-——————
-
-> *© Powered by Dante Dev*
-Stay cool and hack smart. ✌🏻`; 
-                        await sock.sendMessage(sock.user.id, {
-text: desc,
-contextInfo: {
-externalAdReply: {
-title: "MAJIN BUU",
-thumbnailUrl: "https://files.catbox.moe/le0lcp.png",
-sourceUrl: "https://whatsapp.com/channel/0029VbC24qF84OmF4G1kCy3N",
-mediaType: 1,
-renderLargerThumbnail: true
-}  
-}
-},
-{quoted:code })
-                    } catch (e) {
-                            let ddd = sock.sendMessage(sock.user.id, { text: e });
-                            let desc = `Hey there, MAJIN-BUU USER!* 👋🏻
-
-Thanks for using *MAJIN-BUU* — your session has been successfully created!
-
-🔐 *Session ID:* Sent above  
-⚠️ *Keep it safe!* Do NOT share this ID with anyone.
-
-——————
-
-*✅ Stay Updated:*  
-Join our official WhatsApp Channel:  
-https://whatsapp.com/channel/0029VbC24qF84OmF4G1kCy3N
-
-*💻 Source Code:*  
-Fork & explore the project on GitHub:  
-https://github.com/Dexmark256/Majin-Buu-bot
-
-——————
-
-> *© Powered by Malvin King*
-Stay cool and hack smart. ✌🏻`;
-                            await sock.sendMessage(sock.user.id, {
-text: desc,
-contextInfo: {
-externalAdReply: {
-title: "MAJIN BUU BOT",
-thumbnailUrl: "https://files.catbox.moe/le0lcp.png",
-sourceUrl: "https://whatsapp.com/channel/0029VbC24qF84OmF4G1kCy3N",
-mediaType: 2,
-renderLargerThumbnail: true,
-showAdAttribution: true
-}  
-}
-},
-{quoted:ddd })
-                    }
-                    await delay(10);
+                } catch (err) {
+                    console.error("❌ Session Error:", err.message);
+                    await sock.sendMessage(sock.user.id, {
+                        text: `⚠️ Error: ${err.message.includes('rate limit') ? 'Server is busy. Try later.' : err.message}`
+                    });
+                } finally {
+                    await delay(1000);
                     await sock.ws.close();
-                    await removeFile('./temp/' + id);
-                    console.log(`👤 ${sock.user.id} 𝗖𝗼𝗻𝗻𝗲𝗰𝘁𝗲𝗱 ✅ 𝗥𝗲𝘀𝘁𝗮𝗿𝘁𝗶𝗻𝗴 𝗽𝗿𝗼𝗰𝗲𝘀𝘀...`);
-                    await delay(10);
+                    removeFolder(tempDir);
+                    console.log(`✅ ${sock.user.id} session completed`);
                     process.exit();
-                } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode != 401) {
-                    await delay(10);
-                    MAJIN_BUU_PAIR_CODE();
                 }
-            });
-        } catch (err) {
-            console.log("service restated");
-            await removeFile('./temp/' + id);
+
+            } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
+                console.log("🔁 Reconnecting...");
+                await delay(10);
+                createSocketSession();
+            }
+        });
+
+        if (!sock.authState.creds.registered) {
+            await delay(1500);
+            const pairingCode = await sock.requestPairingCode(phoneNumber, "EDITH123");
             if (!res.headersSent) {
-                await res.send({ code: "❗ Service Unavailable" });
+                return res.send({ code: pairingCode });
             }
         }
     }
-   return await MAJIN_BUU_PAIR_CODE();
-});/*
-setInterval(() => {
-    console.log("☘️ 𝗥𝗲𝘀𝘁𝗮𝗿𝘁𝗶𝗻𝗴 𝗽𝗿𝗼𝗰𝗲𝘀𝘀...");
-    process.exit();
-}, 180000); //30min*/
+
+    try {
+        await createSocketSession();
+    } catch (err) {
+        console.error("🚨 Fatal Error:", err.message);
+        removeFolder(tempDir);
+        if (!res.headersSent) {
+            res.status(500).send({ code: "Service Unavailable. Try again later." });
+        }
+    }
+});
+
 module.exports = router;
-    
