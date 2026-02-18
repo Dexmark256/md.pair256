@@ -1,15 +1,21 @@
-FROM node:18
+FROM node:lts-buster
 
-# Install system dependencies
 RUN apt-get update && \
-    apt-get install -y ffmpeg imagemagick webp && \
-    rm -rf /var/lib/apt/lists/*
+  apt-get install -y \
+  ffmpeg \
+  imagemagick \
+  webp && \
+  apt-get upgrade -y && \
+  rm -rf /var/lib/apt/lists/*
+  
+WORKDIR /usr/src/app
 
-WORKDIR /app
+COPY package.json .
 
-COPY package*.json ./
-RUN npm install
+RUN npm install && npm install -g qrcode-terminal pm2
 
 COPY . .
+
+EXPOSE 5000
 
 CMD ["npm", "start"]
