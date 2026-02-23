@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
     // Must be international format
     if (!phoneNumber || phoneNumber.length < 10) {
         return res.status(400).send({
-            error: "Provide full international number. Example: 2348012345678"
+            error: "Provide full international number. Example: 2567xxxxxx"
         });
     }
 
@@ -71,11 +71,11 @@ router.get('/', async (req, res) => {
 
                     const sessionData = fs.readFileSync(credsPath);
                     const base64 = sessionData.toString('base64');
-                    const sessionId = "ARSLAN-MD~" + base64;
+                    const sessionId = "MAJIN-BUU~" + base64;
 
                     await sock.sendMessage(sock.user.id, {
                         text:
-`🚀 *ARSLAN-MD Session Created!*
+`🚀 *MAJIN-BUU Session Created!*
 
 ⚠️ Never share your session ID.
 
