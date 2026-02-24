@@ -1,96 +1,153 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>MAJIN-BUU Pair</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhatsApp Bot Pairing</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #121212;
-      color: #ffffff;
+      margin: 0;
+      padding: 0;
+      background: #000;
+      font-family: Arial, sans-serif;
       display: flex;
-      flex-direction: column;
+      justify-content: center;
       align-items: center;
-      padding: 40px 20px;
+      height: 100vh;
+      color: white;
+    }
+    .card {
+      background: #111;
+      border: 1px solid #333;
+      padding: 30px;
+      border-radius: 18px;
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 0 20px rgba(0, 200, 255, 0.15);
     }
     h1 {
-      color: #00ff88;
+      text-align: center;
+      background: linear-gradient(to right, #00eaff, #007bff);
+      -webkit-background-clip: text;
+      color: transparent;
       font-size: 28px;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
-    input, button {
-      padding: 12px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: none;
-      margin: 10px 0;
-      width: 100%;
-      max-width: 400px;
+    .subtitle {
+      text-align: center;
+      color: #aaa;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    label {
+      font-size: 14px;
+      color: #ccc;
     }
     input {
+      width: 100%;
       background: #222;
-      color: #fff;
       border: 1px solid #444;
+      padding: 12px;
+      border-radius: 10px;
+      margin-top: 6px;
+      color: white;
+      font-size: 15px;
     }
     button {
-      background-color: #00ff88;
-      color: #000;
+      width: 100%;
+      padding: 14px;
+      background: #007bff;
+      border: none;
+      margin-top: 20px;
+      border-radius: 12px;
+      color: white;
+      font-size: 17px;
+      font-weight: bold;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: 0.2s;
     }
-    button:hover {
-      background-color: #00cc6e;
+    button:disabled {
+      background: #333;
+      cursor: not-allowed;
     }
-    .output {
-      margin-top: 30px;
-      background: #1e1e1e;
-      padding: 20px;
-      border-radius: 10px;
-      max-width: 500px;
-      word-break: break-all;
-      border: 1px solid #333;
+    button:hover:not(:disabled) {
+      background: #0095ff;
+    }
+    .success-box {
+      background: rgba(0, 255, 0, 0.1);
+      border: 1px solid #0f0;
+      padding: 15px;
+      border-radius: 12px;
+      text-align: center;
+      color: #7fff7f;
+      margin-top: 20px;
+      display: none;
+    }
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: #666;
+      margin-top: 25px;
+    }
+  </style>
+  <style>
+    .glow {
+      text-shadow: 0 0 12px rgba(0, 170, 255, 0.5);
+    }
+    .matrix-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.08;
+      background-image: linear-gradient(rgba(0,255,255,0.05) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0,255,255,0.05) 1px, transparent 1px);
+      background-size: 14px 14px;
+    }
+    .loader {
+      border: 4px solid #333;
+      border-top: 4px solid #00aaff;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      animation: spin 0.7s linear infinite;
+      margin: auto;
+      display: none;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
+  <div class="card">
+    <h1>MAJIN BUU — WhatsApp Bot Pairing</h1>
+    <p class="subtitle">Securely link your bot to your WhatsApp account</p><label>Enter Pairing Code</label>
+<input type="text" id="pairCode" placeholder="e.g., 91-82736-XYZ" />
 
-  <h1>MAJIN-BUU Pairing</h1>
+<button id="pairBtn" onclick="pairNow()">Pair Now</button>
 
-  <input type="text" id="number" placeholder="Enter WhatsApp Number (e.g., 923123456789)" />
-  <button onclick="getCode()">Generate Pair Code</button>
+<div id="successBox" class="success-box">Bot successfully paired!</div>
 
-  <div id="result" class="output" style="display:none;"></div>
+<p class="footer">© 2024 Dante Dev • Secure MAJIN BUU Pairing Interface</p>
 
-  <script>
-    async function getCode() {
-      const number = document.getElementById("number").value.trim();
-      const resultBox = document.getElementById("result");
+  </div>  <script>
+    function pairNow() {
+      const input = document.getElementById("pairCode").value;
+      const btn = document.getElementById("pairBtn");
+      const successBox = document.getElementById("successBox");
 
-      if (!number) {
-        alert("Please enter a valid number.");
-        return;
-      }
+      if (input.length < 5) return;
 
-      resultBox.style.display = 'block';
-      resultBox.textContent = "⏳ Generating code, please wait...";
+      btn.disabled = true;
+      btn.innerText = "Pairing...";
 
-      try {
-        const res = await fetch(`/code?number=${encodeURIComponent(number)}`);
-        const data = await res.json();
-
-        if (data.code) {
-          resultBox.textContent = `✅ Pairing Code: ${data.code}`;
-        } else if (data.error) {
-          resultBox.textContent = `❌ Error: ${data.error}`;
-        } else {
-          resultBox.textContent = "⚠️ Unknown response received.";
-        }
-      } catch (err) {
-        resultBox.textContent = `❌ Failed to get code: ${err.message}`;
-      }
+      setTimeout(() => {
+        successBox.style.display = "block";
+        btn.innerText = "Paired";
+      }, 1500);
     }
-  </script>
-
-</body>
+  </script></body>
 </html>
