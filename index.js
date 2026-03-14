@@ -7,12 +7,12 @@ import path from "path"
 const app = express()
 const PORT = process.env.PORT || 3000
 
-// Serve HTML files
-app.use(express.static("views"))
+// Serve HTML files (optional, allows direct access to CSS/js if you add later)
+app.use("/views", express.static(path.join(process.cwd(), "views")))
 
-// Ensure homepage loads
+// Ensure homepage loads properly on Render
 app.get("/", (req, res) => {
-    res.sendFile(path.resolve("views/index.html"))
+    res.sendFile(path.join(process.cwd(), "views", "index.html"))
 })
 
 // WhatsApp connection
@@ -37,6 +37,7 @@ startBot()
 // Generate pairing code
 app.get("/pair", async (req, res) => {
 
+    // Get number from query or fallback to owner number
     const number = req.query.number || process.env.OWNER_NUMBER
 
     if (!sock) {
@@ -47,12 +48,12 @@ app.get("/pair", async (req, res) => {
         const code = await sock.requestPairingCode(number)
         res.json({ code })
     } catch (e) {
-        console.error(e)
+        console.error("Error generating pair code:", e)
         res.json({ code: "Error generating code" })
     }
 })
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`Pair site running on http://localhost:${PORT}`)
+    console.log(`Pair site running on port ${PORT}`)
 })
